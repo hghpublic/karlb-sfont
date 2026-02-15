@@ -9,6 +9,8 @@ See http://www.linux-games.com/sfont/
 
 import os
 import sys
+
+import PIL
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -17,13 +19,13 @@ def ttf2image(ttf_font_fullpathname, fontsize=None, fontcolor=None, fontpng=None
     fontsize = fontsize or 11
     fontcolor = fontcolor or '000000'
     fontpng = fontpng or './'
-    
+
     # Setup character delimiter for SFont
     PINK = (255, 0, 255)
-    
+
     # Convert colour/color hex string into tuple of RGB strings
     split = (fontcolor[0:2], fontcolor[2:4], fontcolor[4:6])
-    
+
     font_color = (int(split[0], 16), int(split[1], 16), int(split[2], 16))
 
     # setting the font string
@@ -35,22 +37,25 @@ def ttf2image(ttf_font_fullpathname, fontsize=None, fontcolor=None, fontpng=None
 
     # setting the font and it's size
     font = ImageFont.truetype(ttf_font_fullpathname, fontsize)
+    #font = ImageFont.load_default()  # DEBUG do not submit uncommented, useful for quick random font testing
 
     FONT_PIXEL_HEIGHT_OFFSET = 5  # original offset - I think this is too much .... I guess this needs to be a parameter :-)
     FONT_PIXEL_HEIGHT_OFFSET = 1
 
-    # setting width/height to 0 before calculating actual image width/height 
+    # setting width/height to 0 before calculating actual image width/height
     text_width = 0
     text_height = 0
     seperator_width = 2  # +2 for "pink" kerning seperator/indicator
 
     # start calculating pixel width and height
     for i in range(0, number_of_codepoints):
-        glyph_width, glyph_height = font.getsize(text[i])
+        _, _, glyph_width, glyph_height = font.getbbox(text[i])
         text_width = text_width + glyph_width + seperator_width
         text_height = max(text_height, glyph_height)
     text_height += FONT_PIXEL_HEIGHT_OFFSET
     text_width = text_width + seperator_width  # final seperator
+    print('text_height: %d' % (text_height,))
+    print('text_width: %d' % (text_width,))
 
     # creating a new image
     img = Image.new('RGBA', (text_width, text_height), (0, 0, 0, 0))
@@ -63,19 +68,21 @@ def ttf2image(ttf_font_fullpathname, fontsize=None, fontcolor=None, fontpng=None
     start = 2
 
     glyph_y = max(0, FONT_PIXEL_HEIGHT_OFFSET - 1)
-    print glyph_y
+    print('glyph_y offset: %d' % (glyph_y,))
     for i in range(0, number_of_codepoints):
+        #print('text[i] %r' % (text[i],))  # TODO logging
         draw.text((start, glyph_y), text[i], font=font, fill=font_color)
-        sz = draw.textsize(text[i], font=font)
+        sz = draw.textbbox((0, 0), text[i], font=font)
+        sz = (sz[2], sz[3])
         start = start + sz[0]
         draw.line(((start, 0), (start + (seperator_width - 1), 0)), fill=PINK)
         start = start + seperator_width
     del draw
-    
+
     """TODO scan image and check the height, if there are blank lines above/below, consider removing them.
     PIL seems to return larger pixel heights than actual, leading to large vertical spacing
     """
-    
+
     save_filename = os.path.join(fontpng, "font.png")
     img.save(save_filename, "PNG")
 
@@ -95,6 +102,7 @@ def main(argv=None):
         use_unicode = True
     else:
         use_unicode = False
+    print('Pillow version: %r' %(PIL.__version__,))
     ttf2image(ttf_font_fullpathname, fontsize, fontcolor, fontpng, use_unicode)
 
 if __name__ == "__main__":
